@@ -36,6 +36,7 @@ private:
 
     // arrows2d
     Ref<Arrows2D> m_arrows2d = nullptr;
+    bool m_showArrows = true;
 
     // flags
     bool m_wireframeMode = false;
@@ -77,7 +78,7 @@ void layer::onAttach()
                                             FileName("../assets/shaders/init_field.frag"));
 
     m_fieldShader = ShaderLibrary::load("field_render_shader", 
-                                        FileName("../assets/shaders/screen.vert"), 
+                                        FileName("../assets/shaders/stencil.vert"), 
                                         FileName("../assets/shaders/field.frag"));
 
 }
@@ -88,7 +89,7 @@ void layer::onResize(Event *_e)
     ViewportResizeEvent *e = dynamic_cast<ViewportResizeEvent*>(_e);
     m_vp = e->getViewport();
 
-    m_dim = m_vp / 2;
+    m_dim = m_vp / 16;
     m_vectorField = VectorField(m_dim, "vector_field");
     Quad::bind();
     m_vectorField->bind();
@@ -97,7 +98,7 @@ void layer::onResize(Event *_e)
     Quad::render();    
     m_vectorField->bindDefaultFramebuffer();
 
-    m_arrows2d = std::make_shared<Arrows2D>(m_vectorField, 16);
+    m_arrows2d = std::make_shared<Arrows2D>(m_vectorField, 4);
 
 }
 
@@ -118,18 +119,18 @@ void layer::onUpdate(float _dt)
 
     if (m_vectorField)
     {
+        static glm::vec2 tx_size = 1.0f / glm::vec2(m_dim.x, m_dim.y);
         Quad::bind();
         m_fieldShader->enable();
         m_vectorField->bindTexture(0);
         m_fieldShader->setUniform1i("u_field", 0);
+        m_fieldShader->setUniform2fv("u_tx_size", tx_size);
         Quad::render();
     }
 
-    if (m_arrows2d)
-    {
+    if (m_arrows2d && m_showArrows)
         m_arrows2d->render();
 
-    }
 
     // -- END OF SCENE -- //
 
@@ -165,6 +166,8 @@ void layer::onKeyDownEvent(Event *_e)
             case SYN_KEY_ESCAPE:    EventHandler::push_event(new WindowCloseEvent()); break;
             case SYN_KEY_F4:        m_wireframeMode = !m_wireframeMode; break;
             case SYN_KEY_F5:        m_toggleCulling = !m_toggleCulling; Renderer::setCulling(m_toggleCulling); break;
+
+            case SYN_KEY_TAB:       m_showArrows = !m_showArrows; break;
             default: break;
         }
     }

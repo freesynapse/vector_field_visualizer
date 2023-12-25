@@ -15,6 +15,9 @@ void main()
     vec2 data = texture(u_vector_field, uv).xy;
 
     // TODO : check if these two can be trivially compressed into one
+    // -- don't think so, since atan (=atan2) calculates the angle between the positive
+    // x-axis and the vector, and cos and sin of this angle gives the unit circle vector
+    // coordinates
     float orientation = atan(data.y, data.x);
     v_rot = vec2(cos(orientation), sin(orientation));
     
