@@ -7,6 +7,8 @@ using namespace Syn;
 #include "quad.h"
 #include "field_fbo.h"
 
+#include "field_renderer.h"
+
 
 //
 class layer : public Layer
@@ -37,6 +39,8 @@ private:
     // arrows2d
     Ref<Arrows2D> m_arrows2d = nullptr;
     bool m_showArrows = true;
+
+    FieldRenderer m_fieldRenderer;
 
     // flags
     bool m_wireframeMode = false;
@@ -98,7 +102,7 @@ void layer::onResize(Event *_e)
     Quad::render();    
     m_vectorField->bindDefaultFramebuffer();
 
-    m_arrows2d = std::make_shared<Arrows2D>(m_vectorField, 4);
+    // m_arrows2d = std::make_shared<Arrows2D>(m_vectorField, 4);
 
 }
 
@@ -119,18 +123,20 @@ void layer::onUpdate(float _dt)
 
     if (m_vectorField)
     {
-        static glm::vec2 tx_size = 1.0f / glm::vec2(m_dim.x, m_dim.y);
-        Quad::bind();
-        m_fieldShader->enable();
-        m_vectorField->bindTexture(0);
-        m_fieldShader->setUniform1i("u_field", 0);
-        m_fieldShader->setUniform2fv("u_tx_size", tx_size);
-        Quad::render();
+        // static glm::vec2 tx_size = 1.0f / glm::vec2(m_dim.x, m_dim.y);
+        // Quad::bind();
+        // m_fieldShader->enable();
+        // m_vectorField->bindTexture(0);
+        // m_fieldShader->setUniform1i("u_field", 0);
+        // m_fieldShader->setUniform2fv("u_tx_size", tx_size);
+        // Quad::render();
+        m_fieldRenderer.renderField2d(m_vectorField.get());
     }
 
-    if (m_arrows2d && m_showArrows)
-        m_arrows2d->render();
-
+    // if (m_arrows2d && m_showArrows)
+    //     m_arrows2d->render();
+    if (m_showArrows)
+        m_fieldRenderer.renderField2dQuiver(m_vectorField.get(), 4);
 
     // -- END OF SCENE -- //
 
