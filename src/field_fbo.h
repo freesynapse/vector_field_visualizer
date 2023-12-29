@@ -2,9 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <synapse/SynapseCore/Renderer/Buffers/Framebuffer.hpp>
-
 using namespace Syn;
-
 
 //
 class FieldFBO : public FramebufferBase

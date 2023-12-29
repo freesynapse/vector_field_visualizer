@@ -3,7 +3,7 @@
 #include <synapse/SynapseMain.hpp>
 using namespace Syn;
 
-#include "arrows2d.h"
+// #include "arrows2d.h"
 #include "quad.h"
 #include "field_fbo.h"
 
@@ -37,7 +37,7 @@ private:
     Ref<Shader> m_fieldShader = nullptr;
 
     // arrows2d
-    Ref<Arrows2D> m_arrows2d = nullptr;
+    // Ref<Arrows2D> m_arrows2d = nullptr;
     bool m_showArrows = true;
 
     FieldRenderer m_fieldRenderer;
