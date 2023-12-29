@@ -18,9 +18,21 @@ public:
     //
     void renderField1d(FramebufferBase *_field_1d, bool _field_updated=false)
     {
+        if (_field_1d == nullptr)
+            return;
+
         if (_field_1d != m_field1d)
             m_field1d = _field_1d;
-        assert(1 == 0 && "not implemented yet...");
+
+        auto &dim = m_field1d->getSize();
+        glm::vec2 tx_size = 1.0f / glm::vec2(dim.x, dim.y);
+        Quad::bind();
+        m_field1d_shader->enable();
+        m_field1d->bindTexture(0);
+        m_field1d_shader->setUniform1i("u_field", 0);
+        m_field1d_shader->setUniform2fv("u_tx_size", tx_size);
+        Quad::render();
+
     }
 
     //
@@ -76,44 +88,69 @@ public:
 
     }
 
+    // overlaods
+    __always_inline 
+    void renderField1d(Ref<FramebufferBase> _field_1d, bool _field_updated=false) { renderField1d(_field_1d.get(), _field_updated); }
+    __always_inline 
+    void renderField2d(Ref<FramebufferBase> _field_2d, bool _field_updated=false) { renderField2d(_field_2d.get(), _field_updated); }
+    __always_inline
+    void renderField2dQuiver(Ref<FramebufferBase> _field_2d, 
+                             uint32_t _sampling_rate=1,
+                             bool _field_updated=false,
+                             const glm::vec2 &_vp=Renderer::getViewportF())
+    { renderField2dQuiver(_field_2d.get(), _sampling_rate, _field_updated, _vp); }
+
+
 
 private:
     void initStaticShaders()
     {
-        std::string field2dSrc = R"(
+        std::string field1dSrc = R"(
             #type VERTEX_SHADER
             #version 450 core
-
             layout(location = 0) in vec2 a_position;
             layout(location = 4) in vec2 a_uv;
-
             uniform vec2 u_tx_size;
-
-            out vec2    T,
-                    L, C, R,
-                        B;
+            out vec2 C;
 
             void main()
             {
                 C = a_uv;
-                L = a_uv - vec2(u_tx_size.x, 0.0);
-                R = a_uv + vec2(u_tx_size.x, 0.0);
-                B = a_uv - vec2(0.0, u_tx_size.y);
-                T = a_uv + vec2(0.0, u_tx_size.y);
-
                 gl_Position = vec4(a_position, 0.0, 1.0);
 
             }
+
             #type FRAGMENT_SHADER
             #version 450 core
-
             layout (location = 0) out vec4 out_color;
-
             in vec2 C;
-
             layout (binding = 0) uniform sampler2D u_field;
 
+            void main()
+            {
+                out_color = vec4(vec3(texture(u_field, C).x), 1.0);
+            }
+        )";
 
+        std::string field2dSrc = R"(
+            #type VERTEX_SHADER
+            #version 450 core
+            layout(location = 0) in vec2 a_position;
+            layout(location = 4) in vec2 a_uv;
+            uniform vec2 u_tx_size;
+            out vec2 C;
+
+            void main()
+            {
+                C = a_uv;
+                gl_Position = vec4(a_position, 0.0, 1.0);
+            }
+            
+            #type FRAGMENT_SHADER
+            #version 450 core
+            layout (location = 0) out vec4 out_color;
+            in vec2 C;
+            layout (binding = 0) uniform sampler2D u_field;
             void main()
             {
                 out_color = vec4(texture(u_field, C).xy, 0.0, 1.0);
@@ -161,7 +198,6 @@ private:
             uniform float u_linewidth = 0.08;
             uniform float u_antialias = 0.01;
 
-            //---------------------------------------------------------------------------------------
             // Fill function for arrows
             vec4 filled(float distance,     // Signed distance to line
                         float linewidth,    // Stroke line width
@@ -240,6 +276,7 @@ private:
             }            
         )";
 
+        m_field1d_shader = ShaderLibrary::loadFromSrc("field1d_shader", field1dSrc);
         m_field2d_shader = ShaderLibrary::loadFromSrc("field2d_shader", field2dSrc);
         m_field2d_quiver_shader = ShaderLibrary::loadFromSrc("field2d_quiver_shader", quiverSrc);
 

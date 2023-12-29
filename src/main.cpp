@@ -32,19 +32,22 @@ private:
 
     // vector field
     Ref<FieldFBO> m_vectorField = nullptr;
-    glm::ivec2 m_dim;
-    Ref<Shader> m_initFieldShader = nullptr;
-    Ref<Shader> m_fieldShader = nullptr;
+    Ref<FieldFBO> m_scalarField = nullptr;
+    glm::ivec2 m_fieldShape;
 
-    // arrows2d
-    // Ref<Arrows2D> m_arrows2d = nullptr;
-    bool m_showArrows = true;
+    Ref<Shader> m_initVectorFieldShader = nullptr;
+    Ref<Shader> m_initScalarFieldShader = nullptr;
 
+    //
     FieldRenderer m_fieldRenderer;
 
     // flags
     bool m_wireframeMode = false;
     bool m_toggleCulling = false;
+
+    //
+    bool m_showScalarField = true;
+    bool m_showQuivers = true;
 
 };
 
@@ -74,16 +77,14 @@ void layer::onAttach()
     // general settings
 	Renderer::get().setClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 	Renderer::get().disableImGuiUpdateReport();
-    // Application::get().setMaxFPS(30.0f);
 
-    // test start
-    m_initFieldShader = ShaderLibrary::load("init_field_shader", 
-                                            FileName("../assets/shaders/stencil.vert"), 
-                                            FileName("../assets/shaders/init_field.frag"));
+    m_initScalarFieldShader = ShaderLibrary::load("init_field_1d_shader", 
+                                                  FileName("../assets/shaders/stencil.vert"), 
+                                                  FileName("../assets/shaders/init_field_1d.frag"));
 
-    m_fieldShader = ShaderLibrary::load("field_render_shader", 
-                                        FileName("../assets/shaders/stencil.vert"), 
-                                        FileName("../assets/shaders/field.frag"));
+    m_initVectorFieldShader = ShaderLibrary::load("init_field_2d_shader", 
+                                                  FileName("../assets/shaders/stencil.vert"), 
+                                                  FileName("../assets/shaders/init_field_2d.frag"));
 
 }
 
@@ -93,14 +94,24 @@ void layer::onResize(Event *_e)
     ViewportResizeEvent *e = dynamic_cast<ViewportResizeEvent*>(_e);
     m_vp = e->getViewport();
 
-    m_dim = m_vp / 16;
-    m_vectorField = VectorField(m_dim, "vector_field");
+    m_fieldShape = m_vp / 16;
+    glm::vec2 tx_size = 1.0f / glm::vec2(m_fieldShape.x, m_fieldShape.y);
+
+    // initialize scalar field
+    m_scalarField = ScalarField(m_fieldShape, "scalar_field");
+    Quad::bind();
+    m_scalarField->bind();
+    m_initScalarFieldShader->enable();
+    m_initScalarFieldShader->setUniform2fv("u_tx_size", tx_size);
+    Quad::render();
+
+    // initialize vector field
+    m_vectorField = VectorField(m_fieldShape, "vector_field");
     Quad::bind();
     m_vectorField->bind();
-    m_initFieldShader->enable();
-    m_initFieldShader->setUniform2fv("u_tx_size", 1.0f / glm::vec2(m_dim.x, m_dim.y));
+    m_initVectorFieldShader->enable();
+    m_initVectorFieldShader->setUniform2fv("u_tx_size", tx_size);
     Quad::render();    
-    m_vectorField->bindDefaultFramebuffer();
 
     // m_arrows2d = std::make_shared<Arrows2D>(m_vectorField, 4);
 
@@ -121,22 +132,13 @@ void layer::onUpdate(float _dt)
 
     // -- BEGINNING OF SCENE -- //
 
-    if (m_vectorField)
-    {
-        // static glm::vec2 tx_size = 1.0f / glm::vec2(m_dim.x, m_dim.y);
-        // Quad::bind();
-        // m_fieldShader->enable();
-        // m_vectorField->bindTexture(0);
-        // m_fieldShader->setUniform1i("u_field", 0);
-        // m_fieldShader->setUniform2fv("u_tx_size", tx_size);
-        // Quad::render();
-        m_fieldRenderer.renderField2d(m_vectorField.get());
-    }
-
-    // if (m_arrows2d && m_showArrows)
-    //     m_arrows2d->render();
-    if (m_showArrows)
-        m_fieldRenderer.renderField2dQuiver(m_vectorField.get(), 4);
+    if (m_scalarField && m_showScalarField)
+        m_fieldRenderer.renderField1d(m_scalarField);
+    else if (m_vectorField)
+        m_fieldRenderer.renderField2d(m_vectorField);
+    
+    if (m_showQuivers)
+        m_fieldRenderer.renderField2dQuiver(m_vectorField, 4);
 
     // -- END OF SCENE -- //
 
@@ -151,6 +153,10 @@ void layer::onUpdate(float _dt)
     int i = 0;
     m_font->beginRenderBlock();
 	m_font->addString(2.0f, fontHeight * ++i, "fps=%.0f  VSYNC=%s", TimeStep::getFPS(), Application::get().getWindow().isVSYNCenabled() ? "ON" : "OFF");
+    m_font->addString(2.0f, fontHeight * ++i, "Field: %s %s", 
+                      m_showScalarField ? "SCALAR" : "VECTOR",
+                      m_showQuivers ? "(arrows: vector field)" : ""
+                      );
     m_font->endRenderBlock();
 
     //
@@ -173,7 +179,8 @@ void layer::onKeyDownEvent(Event *_e)
             case SYN_KEY_F4:        m_wireframeMode = !m_wireframeMode; break;
             case SYN_KEY_F5:        m_toggleCulling = !m_toggleCulling; Renderer::setCulling(m_toggleCulling); break;
 
-            case SYN_KEY_TAB:       m_showArrows = !m_showArrows; break;
+            case SYN_KEY_TAB:       m_showQuivers = !m_showQuivers; break;
+            case SYN_KEY_SPACE:     m_showScalarField = !m_showScalarField; break;
             default: break;
         }
     }
